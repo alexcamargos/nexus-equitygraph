@@ -72,6 +72,7 @@ packages = ["src/nexus_equitygraph"]
 
 [tool.pytest.ini_options]
 pythonpath = "src"
+testpaths = ["tests"]
 addopts = "--cov=nexus_equitygraph --cov-report=term-missing"
 
 [tool.isort]

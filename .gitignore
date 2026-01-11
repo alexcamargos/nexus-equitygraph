@@ -1,8 +1,8 @@
 ### General Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]  # .pyc, .pyo, .pyd
-*$py.class # Jython
+*.py[cod]
+*$py.class
 
 # C extensions
 *.so
@@ -31,9 +31,9 @@ htmlcov/
 .pytest_cache/ 
 
 ### Environments ###
-[._]?[Vv]env/  # .venv/, venv/, _venv/, Venv/
-[Ee]nv/       # env/, ENV/
-.env*         # .env, .env.local, .env.development
+[._]?[Vv]env/
+[Ee]nv/
+.env*
 
 # Sphinx documentation
 docs/_build/
