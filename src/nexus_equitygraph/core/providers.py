@@ -27,6 +27,9 @@ def _get_groq_llm(model_name: Optional[str] = None, temperature: float = 0.0) ->
     # Determine the model to use, falling back to settings if not provided.
     model = model_name or settings.groq_default_model
 
+    if not model:
+        raise ValueError("Groq model name is not configured.")
+
     return ChatGroq(model=model, temperature=temperature, api_key=settings.api_key)
 
 
@@ -47,12 +50,16 @@ def _get_ollama_llm(model_name: Optional[str] = None, temperature: float = 0.0) 
     # Determine the model to use, falling back to settings if not provided.
     model = model_name or settings.ollama_default_model
 
+    if not model:
+        raise ValueError("Ollama model name is not configured.")
+
     return ChatOllama(base_url=settings.ollama_base_url, model=model, temperature=temperature, reasoning=True)
 
 
 @lru_cache
 def create_llm_provider(
     provider_name: Optional[str] = None,
+    *,
     model_name: Optional[str] = None,
     temperature: float = 0.0,
 ) -> BaseChatModel:
