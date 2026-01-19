@@ -3,9 +3,13 @@
 import re
 from typing import Optional
 
+import trafilatura
+from loguru import logger
+
 # Regular expressions, precompiled for performance, to clean company names.
 RE_CLEAN_PUNCTUATION = re.compile(r"[\.\,\-]")
 RE_REMOVE_CORP_SUFFIX = re.compile(r"\s+(S\s?A|S\/A|LTDA|HOLDING|PARTICIPACOES|PARTICIPAÇÕES)\b.*")
+RE_CLEAN_WHITESPACE = re.compile(r"\s+")
 
 
 def normalize_company_name(name: Optional[str]) -> str:
@@ -46,3 +50,58 @@ def format_cache_key(identifier: str, suffix: str) -> str:
     safe_id = identifier.upper().replace(" ", "_").replace(".", "").replace("/", "")
 
     return f"{safe_id}_{suffix}"
+
+
+def truncate_text(text: str, limit: int, suffix: str = "...") -> str:
+    """Truncate text to a specified limit with an optional suffix.
+
+    Args:
+        text: The text to truncate.
+        limit: Maximum character length before truncation.
+        suffix: String to append when truncated. Defaults to "...".
+
+    Returns:
+        The original text if within limit, otherwise truncated text with suffix.
+    """
+
+    if len(text) <= limit:
+        return text
+
+    return text[:limit] + suffix
+
+
+def extract_clean_text_from_html(html_content: str) -> str:
+    """Extract and clean text from HTML content using trafilatura.
+
+    Args:
+        html_content: The HTML content to extract text from.
+
+    Returns:
+        The extracted and cleaned text, or empty string on failure.
+    
+    Raises:
+        ValueError: If the HTML content is invalid.
+        AttributeError: If the HTML content is not a string.
+        Exception: For other unexpected errors.
+    """
+
+    try:
+        cleaned_html = trafilatura.extract(
+            html_content,
+            include_comments=False,
+            include_tables=False,
+            include_formatting=False,
+            no_fallback=True,
+        )
+        if not cleaned_html:
+            return ""
+
+        # Remove excessive whitespace and newlines.
+        return RE_CLEAN_WHITESPACE.sub(" ", cleaned_html).strip()
+
+    except (ValueError, AttributeError) as error:
+        logger.error(f"Error extracting text from HTML: {error}")
+        return ""
+    except Exception as error:
+        logger.error(f"Unexpected error extracting text from HTML: {error}")
+        return ""
