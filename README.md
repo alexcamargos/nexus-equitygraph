@@ -48,6 +48,7 @@ O sistema opera via um grafo onde cada nó representa uma "persona" com responsa
   * **CVM (Dados Abertos)**: Balanços Oficiais (DRE, BPP, DFC).
   * **B3 / Yahoo Finance**: Dados de Mercado (Delay 15min).
   * **Web Search**: DuckDuckGo API.
+* **Testes**: A suíte de testes foi desenvolvida com assistência de Inteligência Artificial, demonstrando o uso de *AI-Assisted Coding* para maximizar a eficiência e a cobertura de código.
 
 
 ## Autor
