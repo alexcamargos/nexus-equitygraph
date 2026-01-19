@@ -1,5 +1,6 @@
 """HTTP Client module with retry logic and centralized configuration."""
 
+from functools import lru_cache
 from typing import Any, Dict, Optional
 
 import requests
@@ -45,6 +46,22 @@ class HttpClient:
 
         # Configure the retry strategy and mount adapters.
         self._setup_retry_strategy(retries, backoff_factor)
+
+    def __enter__(self) -> "HttpClient":
+        """Enter the context manager."""
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit the context manager and close the session."""
+
+        self.close()
+
+    def close(self):
+        """Close the session."""
+
+        if self.session:
+            self.session.close()
 
     def _setup_retry_strategy(self, retries: int, backoff_factor: float) -> None:
         """Configures the retry strategy and mounts it to the session.
@@ -97,8 +114,17 @@ class HttpClient:
             logger.error(f"Request failed: {url} - {request_exception}")
             raise request_exception
 
-    def close(self):
-        """Close the session."""
 
-        if self.session:
-            self.session.close()
+@lru_cache(maxsize=1)
+def get_http_client() -> HttpClient:
+    """Factory to get the HTTP client instance (Singleton).
+
+    Returns a cached singleton instance of HttpClient for connection reuse.
+    The session maintains a connection pool per domain, improving performance
+    when making multiple requests to the same hosts.
+
+    Returns:
+        HttpClient: The configured HTTP client instance.
+    """
+
+    return HttpClient()
