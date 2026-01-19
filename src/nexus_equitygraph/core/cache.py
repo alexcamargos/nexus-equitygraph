@@ -142,14 +142,14 @@ class JSONCacheManager(CacheManager):
         return None
 
     def save_cache(
-        self, sub_directory: Path | str, file_name: str, data: Dict[str, Any]
+        self, sub_directory: Path | str, file_name: str, data: Any
     ) -> None:
         """Save data to a JSON cache file.
 
         Args:
             sub_directory (Path | str): The subdirectory within the base directory.
             file_name (str): The name of the cache file.
-            data (Dict[str, Any]): The data to be cached.
+            data (Any): The data to be cached (must be JSON-serializable).
 
         Raises:
             TypeError: If the data cannot be serialized to JSON.
