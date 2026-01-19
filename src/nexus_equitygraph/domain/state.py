@@ -16,6 +16,15 @@ class FinancialMetric(BaseModel):
     description: Optional[str] = Field(None, description="Brief explanation of the metric")
 
 
+class NewsArticle(BaseModel):
+    """Represents a news article fetched from the web."""
+
+    title: str = Field(..., description="Article title")
+    url: str = Field(..., description="Article URL")
+    text: str = Field(..., description="Article content")
+    timestamp: str = Field(..., description="Publication timestamp (ISO 8601 format)")
+
+
 class ReviewFeedback(BaseModel):
     """Feedback structure from the reviewer agent."""
 
