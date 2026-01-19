@@ -91,7 +91,7 @@ def extract_clean_text_from_html(html_content: str) -> str:
             include_comments=False,
             include_tables=False,
             include_formatting=False,
-            no_fallback=True,
+            fast=True,
         )
         if not cleaned_html:
             return ""
