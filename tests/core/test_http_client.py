@@ -3,7 +3,7 @@
 import pytest
 from requests.exceptions import HTTPError, RequestException
 
-from nexus_equitygraph.core.http_client import HttpClient
+from nexus_equitygraph.core.http_client import HttpClient, get_http_client
 
 
 class TestHttpClient:
@@ -127,3 +127,122 @@ class TestHttpClient:
 
         # Assert: Verify params were passed to the session.
         mock_get.assert_called_once_with("/endpoint", timeout=30, params=params)
+
+    def test_context_manager_enter_returns_self(self):
+        """Test that __enter__ returns the client instance."""
+
+        # Arrange & Action: Use client as context manager.
+        with HttpClient() as client:
+            # Assert: Verify __enter__ returns the instance.
+            assert isinstance(client, HttpClient)
+            assert client.session is not None
+
+    def test_context_manager_closes_session_on_exit(self, mocker):
+        """Test that __exit__ closes the session."""
+
+        # Arrange: Create client and mock close.
+        client = HttpClient()
+        mock_close = mocker.patch.object(client.session, "close")
+
+        # Action: Enter and exit context manager.
+        with client:
+            pass
+
+        # Assert: Verify session was closed.
+        mock_close.assert_called_once()
+
+    def test_context_manager_closes_on_exception(self, mocker):
+        """Test that session is closed even when exception occurs."""
+
+        # Arrange: Create client and mock close.
+        client = HttpClient()
+        mock_close = mocker.patch.object(client.session, "close")
+
+        # Action & Assert: Exception should propagate but session should close.
+        with pytest.raises(ValueError):
+            with client:
+                raise ValueError("Test exception")
+
+        mock_close.assert_called_once()
+
+    def test_close_is_idempotent(self, client, mocker):
+        """Test that calling close() multiple times is safe."""
+
+        # Arrange: Mock the session close.
+        mock_close = mocker.patch.object(client.session, "close")
+
+        # Action: Call close multiple times.
+        client.close()
+        client.close()
+
+        # Assert: close() should be called twice without error.
+        assert mock_close.call_count == 2
+
+    def test_get_overrides_default_timeout(self, client, mocker, mock_response):
+        """Test that timeout can be overridden via kwargs."""
+
+        # Arrange: Setup mock.
+        mock_response.status_code = 200
+        mock_get = mocker.patch("requests.Session.get", return_value=mock_response)
+
+        # Action: Call get with custom timeout.
+        client.get("/endpoint", timeout=60)
+
+        # Assert: Verify custom timeout was used.
+        mock_get.assert_called_once_with("/endpoint", timeout=60)
+
+    def test_get_with_absolute_url_no_base_url(self, mocker, mock_response):
+        """Test GET request with absolute URL when no base_url is set."""
+
+        # Arrange: Setup mock and client without base_url.
+        mock_response.status_code = 200
+        mock_get = mocker.patch("requests.Session.get", return_value=mock_response)
+
+        client = HttpClient()  # No base_url
+
+        # Action: Call get with absolute URL.
+        client.get("https://example.com/api/data")
+
+        # Assert: Verify the full URL was used as-is.
+        mock_get.assert_called_once_with("https://example.com/api/data", timeout=30)
+
+
+class TestGetHttpClient:
+    """Test suite for get_http_client singleton factory."""
+
+    def setup_method(self):
+        """Clear the cache before each test."""
+
+        get_http_client.cache_clear()
+
+    def test_returns_http_client_instance(self):
+        """Test that get_http_client returns an HttpClient instance."""
+
+        # Action: Get client from factory.
+        client = get_http_client()
+
+        # Assert: Verify it's an HttpClient.
+        assert isinstance(client, HttpClient)
+
+    def test_returns_singleton_instance(self):
+        """Test that get_http_client returns the same instance (singleton)."""
+
+        # Action: Get client twice.
+        client1 = get_http_client()
+        client2 = get_http_client()
+
+        # Assert: Verify both are the same instance.
+        assert client1 is client2
+
+    def test_cache_clear_creates_new_instance(self):
+        """Test that cache_clear allows creating a new instance."""
+
+        # Arrange: Get initial instance.
+        client1 = get_http_client()
+
+        # Action: Clear cache and get new instance.
+        get_http_client.cache_clear()
+        client2 = get_http_client()
+
+        # Assert: Verify they are different instances.
+        assert client1 is not client2
