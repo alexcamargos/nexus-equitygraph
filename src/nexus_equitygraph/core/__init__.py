@@ -2,10 +2,11 @@
 
 from .cache import get_file_cache_manager, get_json_cache_manager, get_pickle_cache_manager
 from .configs import DirectoryConfigs
-from .http_client import HttpClient
+from .formatters import format_articles_output, format_single_article, normalize_article
+from .http_client import HttpClient, get_http_client
 from .providers import create_llm_provider
 from .settings import cvm_settings, settings
-from .text_utils import normalize_company_name
+from .text_utils import extract_clean_text_from_html, format_cache_key, normalize_company_name, truncate_text
 
 __all__ = [
     "DirectoryConfigs",
@@ -13,8 +14,15 @@ __all__ = [
     "cvm_settings",
     "create_llm_provider",
     "HttpClient",
+    "get_http_client",
     "get_json_cache_manager",
     "get_pickle_cache_manager",
     "get_file_cache_manager",
     "normalize_company_name",
+    "format_cache_key",
+    "truncate_text",
+    "extract_clean_text_from_html",
+    "format_articles_output",
+    "format_single_article",
+    "normalize_article",
 ]
