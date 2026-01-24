@@ -1,7 +1,7 @@
 """Application configuration for Nexus EquityGraph."""
 
 from functools import lru_cache
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,7 +34,7 @@ class NexusEquityGraphSettings(BaseAppSettings):
     """Application settings for Nexus EquityGraph."""
 
     # AI Provider Configuration
-    provider: str = Field(default=..., validation_alias="AI_PROVIDER")
+    provider: Annotated[str, Field(validation_alias="AI_PROVIDER")] = "ollama"
     # AI API Key (Common for all providers)
     api_key: Optional[SecretStr] = Field(default=None, validation_alias="AI_API_KEY")
 
