@@ -57,18 +57,17 @@ class TestNexusEquityGraphSettings:
         assert settings.ollama_base_url == "http://localhost:11434"
         assert settings.ollama_default_model == "llama3-8b"
 
-    def test_missing_required_provider_raises_error(self, mock_env, settings_factory):
-        """Tests if the system raises an error when AI_PROVIDER (required) is missing."""
+    def test_default_provider_when_env_not_set(self, mock_env, settings_factory):
+        """Tests if provider uses default value when AI_PROVIDER is not set."""
 
-        # Setup: Remove the required variable defined by the fixture.
+        # Setup: Remove the variable defined by the fixture.
         mock_env.delenv("AI_PROVIDER", raising=False)
 
-        # Action & Assert
-        with pytest.raises(ValidationError) as excinfo:
-            settings_factory()
+        # Action
+        settings = settings_factory()
 
-        # Checks if the error mentions the correct field.
-        assert "AI_PROVIDER" in str(excinfo.value)
+        # Assert: Should use default value instead of raising error
+        assert settings.provider == "ollama"
 
     def test_default_values_for_optional_fields(self, mock_env, settings_factory):
         """Tests if optional fields assume correct default values (None or False)."""
