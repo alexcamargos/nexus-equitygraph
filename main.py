@@ -47,7 +47,8 @@ def run_llm_smoke_test() -> bool:
 
     try:
         llm = create_llm_provider(temperature=0.0)
-        model_name = llm.model_name if hasattr(llm, "model_name") else "Unknown Model"
+        # Attempt a simple prompt to verify connectivity.
+        model_name = getattr(llm, "model_name", None) or getattr(llm, "model", "unknown")
         logger.info(f"LLM Initialized: {model_name}")
 
         messages = [
