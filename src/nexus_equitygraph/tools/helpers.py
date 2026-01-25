@@ -1,7 +1,7 @@
 """Helper functions for financial indicator tools (not exposed as LLM tools)."""
 
 from functools import lru_cache
-from typing import Any
+from typing import Any, List
 
 import pandas as pd
 
@@ -143,3 +143,88 @@ def format_percentage_currency(label: str, value: float, total: float) -> str:
     percentage_value = (value / total) * 100 if total else 0.0
 
     return f"{label}: {percentage_value:.1f}% (R$ {value:,.0f})"
+
+
+def process_and_format_dre_for_year(dre_df: pd.DataFrame, year: str) -> List[str]:
+    """Process and format the DRE (Income Statement) data for a specific year.
+
+    Args:
+        dre_df (pd.DataFrame): DataFrame containing the DRE data.
+        year (str): The year for which the data should be processed.
+
+    Returns:
+        List[str]: List of formatted strings with the DRE data.
+    """
+
+    # Initialize output list for the year.
+    output = []
+
+    # Get DRE for the specified year.
+    dre_year = dre_df[dre_df['DT_REFER'].astype(str).str.contains(year)].copy()
+
+    if dre_year.empty:
+        return output
+
+    # Ensure date types
+    dre_year['DT_REFER'] = pd.to_datetime(dre_year['DT_REFER'])
+    if 'ORDEM_EXERC' in dre_year.columns:
+        dre_year = dre_year[dre_year['ORDEM_EXERC'] == 'ÚLTIMO']
+
+    if 'DT_INI_EXERC' in dre_year.columns:
+        dre_year['DT_INI_EXERC'] = pd.to_datetime(dre_year['DT_INI_EXERC'])
+
+    # Get the last quarter's DRE of that year (maximum reference).
+    latest_reference_date = dre_year['DT_REFER'].max()
+    latest_dre_records = dre_year[dre_year['DT_REFER'] == latest_reference_date]
+
+    # Filter for Accumulated (Longest Period) per Account.
+    # If duplicates exist (Quarter vs YTD), we want YTD (earliest start date).
+    if not latest_dre_records.empty and 'DT_INI_EXERC' in latest_dre_records.columns:
+        # Sort by start date (asc) -> Jan is earlier than July
+        # dropping duplicates on CD_CONTA keeping first (Accumulated).
+        latest_dre_records = latest_dre_records.sort_values('DT_INI_EXERC', ascending=True)
+        latest_dre_records = latest_dre_records.drop_duplicates(subset=['CD_CONTA'], keep='first')
+
+    lines = latest_dre_records[latest_dre_records['CD_CONTA'].isin(['3.01', '3.11', '3.99'])]
+
+    if not lines.empty:
+        output.append(f"DRE Resumo (Acumulado até {latest_reference_date.strftime('%m/%Y')}):")
+        output.append(lines[['DS_CONTA', 'VL_CONTA']].to_string(index=False))
+
+    return output
+
+
+def process_and_format_bpp_for_year(mapper: Any, year: str) -> List[str]:
+    """Process and format the BPP (Balance Sheet) data for a specific year.
+
+    Args:
+        mapper (Any): The account mapper object containing data.
+        year (str): The year for which the data should be processed.
+
+    Returns:
+        List[str]: List of formatted strings with the BPP data.
+    """
+
+    # Initialize output list for the year.
+    output = []
+
+    # Get BPP DataFrame for the specified year.
+    bpp_dataframe = mapper.data.get('BPP')
+
+    if bpp_dataframe is None or bpp_dataframe.empty:
+        return output
+
+    # Filter Balance Sheet for the specified year.
+    bpp_year = bpp_dataframe[bpp_dataframe['DT_REFER'].astype(str).str.contains(year)]
+
+    if bpp_year.empty:
+        return output
+
+    # Get Equity for that lastest date,
+    latest_reference_date = bpp_year['DT_REFER'].max()
+    equity = mapper.get_equity(latest_reference_date)
+
+    if equity:
+        output.append(f"Patrimônio Líquido: {equity}")
+
+    return output
