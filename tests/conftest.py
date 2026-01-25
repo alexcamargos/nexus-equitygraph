@@ -19,6 +19,7 @@ def mock_cvm_data():
         # 2023
         {
             "DT_REFER": reporting_date_2023,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.01",
             "DS_CONTA": "Receita de Venda",
             "VL_CONTA": 1000.0,
@@ -26,6 +27,7 @@ def mock_cvm_data():
         },
         {
             "DT_REFER": reporting_date_2023,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.03",
             "DS_CONTA": "Resultado Bruto",
             "VL_CONTA": 500.0,
@@ -33,6 +35,7 @@ def mock_cvm_data():
         },
         {
             "DT_REFER": reporting_date_2023,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.05",
             "DS_CONTA": "Resultado Antes do Resultado Financeiro e dos Tributos",
             "VL_CONTA": 300.0,
@@ -40,6 +43,7 @@ def mock_cvm_data():
         },
         {
             "DT_REFER": reporting_date_2023,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.11",
             "DS_CONTA": "Lucro/Prejuízo Consolidado do Período",
             "VL_CONTA": 200.0,
@@ -48,6 +52,7 @@ def mock_cvm_data():
         # 2022 (Comparison)
         {
             "DT_REFER": reporting_date_2022,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.01",
             "DS_CONTA": "Receita de Venda",
             "VL_CONTA": 900.0,
@@ -55,6 +60,7 @@ def mock_cvm_data():
         },
         {
             "DT_REFER": reporting_date_2022,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.03",
             "DS_CONTA": "Resultado Bruto",
             "VL_CONTA": 450.0,
@@ -62,21 +68,37 @@ def mock_cvm_data():
         },
         {
             "DT_REFER": reporting_date_2022,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.05",
             "DS_CONTA": "Resultado Antes",
             "VL_CONTA": 250.0,
             "ORDEM_EXERC": "ÚLTIMO",
         },
-        {"DT_REFER": reporting_date_2022, "CD_CONTA": "3.11", "DS_CONTA": "Lucro", "VL_CONTA": 180.0, "ORDEM_EXERC": "ÚLTIMO"},
+        {
+            "DT_REFER": reporting_date_2022,
+            "CD_CVM": "004170",
+            "CD_CONTA": "3.11",
+            "DS_CONTA": "Lucro",
+            "VL_CONTA": 180.0,
+            "ORDEM_EXERC": "ÚLTIMO",
+        },
         # 2018 (CAGR Base)
         {
             "DT_REFER": reporting_date_2018,
+            "CD_CVM": "004170",
             "CD_CONTA": "3.01",
             "DS_CONTA": "Receita de Venda",
             "VL_CONTA": 500.0,
             "ORDEM_EXERC": "ÚLTIMO",
         },
-        {"DT_REFER": reporting_date_2018, "CD_CONTA": "3.11", "DS_CONTA": "Lucro", "VL_CONTA": 100.0, "ORDEM_EXERC": "ÚLTIMO"},
+        {
+            "DT_REFER": reporting_date_2018,
+            "CD_CVM": "004170",
+            "CD_CONTA": "3.11",
+            "DS_CONTA": "Lucro",
+            "VL_CONTA": 100.0,
+            "ORDEM_EXERC": "ÚLTIMO",
+        },
     ]
     df_dre = pd.DataFrame(dre_data)
 
