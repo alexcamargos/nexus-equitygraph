@@ -10,6 +10,7 @@ from loguru import logger
 RE_CLEAN_PUNCTUATION = re.compile(r"[\.\,\-]")
 RE_REMOVE_CORP_SUFFIX = re.compile(r"\s+(S\s?A|S\/A|LTDA|HOLDING|PARTICIPACOES|PARTICIPAÇÕES)\b.*")
 RE_CLEAN_WHITESPACE = re.compile(r"\s+")
+RE_THINK_TAGS = re.compile(r"<think>.*?</think>", flags=re.DOTALL)
 
 
 def normalize_company_name(name: Optional[str]) -> str:
@@ -78,7 +79,7 @@ def extract_clean_text_from_html(html_content: str) -> str:
 
     Returns:
         The extracted and cleaned text, or empty string on failure.
-    
+
     Raises:
         ValueError: If the HTML content is invalid.
         AttributeError: If the HTML content is not a string.
@@ -105,3 +106,16 @@ def extract_clean_text_from_html(html_content: str) -> str:
     except Exception as error:
         logger.error(f"Unexpected error extracting text from HTML: {error}")
         return ""
+
+
+def cleanup_think_tags(content: str) -> str:
+    """Removes <think>...</think> tags from the content.
+
+    Args:
+        content (str): The text content containing potential think tags.
+
+    Returns:
+        str: Cleaned content without the think tags.
+    """
+
+    return RE_THINK_TAGS.sub("", content).strip()
