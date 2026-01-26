@@ -3,6 +3,7 @@
 import pytest
 
 from nexus_equitygraph.core.text_utils import (
+    cleanup_think_tags,
     extract_clean_text_from_html,
     format_cache_key,
     normalize_company_name,
@@ -494,3 +495,64 @@ class TestExtractCleanTextFromHtml:
         # Assert: Returns empty string and logs error.
         assert result == ""
         mock_logger.error.assert_called_once()
+
+
+class TestCleanupThinkTags:
+    """Test suite for cleanup_think_tags."""
+
+    def test_removes_simple_think_tags(self):
+        """Test removal of simple think tags."""
+
+        # Arrange: Content with inline tags.
+        content = "Hello <think>thinking process</think> World"
+
+        # Act: Call cleanup_think_tags.
+        result = cleanup_think_tags(content)
+
+        # Assert: Tags removed.
+        assert result == "Hello  World"
+
+    def test_removes_multiline_think_tags(self):
+        """Test removal of multiline think tags."""
+
+        # Arrange: Content with multiline tags.
+        content = "Start\n<think>\nLine 1\nLine 2\n</think>\nEnd"
+
+        # Act: Call cleanup_think_tags.
+        result = cleanup_think_tags(content)
+
+        # Assert: Tags removed, preserving surrounding structure.
+        assert result == "Start\n\nEnd"
+
+    def test_removes_multiple_tags(self):
+        """Test removal of multiple tags in the same string."""
+
+        # Arrange: Content with multiple tags.
+        content = "<think>1</think>Real Content<think>2</think>"
+
+        # Act: Call cleanup_think_tags.
+        result = cleanup_think_tags(content)
+
+        # Assert: All tags removed.
+        assert result == "Real Content"
+
+    def test_handles_content_without_tags(self):
+        """Test content without any tags."""
+
+        # Arrange: Plain text.
+        content = "Just plain text."
+
+        # Act: Call cleanup_think_tags.
+        result = cleanup_think_tags(content)
+
+        # Assert: Content remains unchanged.
+        assert result == "Just plain text."
+
+    def test_handles_empty_string(self):
+        """Test empty string input."""
+
+        # Act: Call cleanup_think_tags.
+        result = cleanup_think_tags("")
+
+        # Assert: Returns empty string.
+        assert result == ""
