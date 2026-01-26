@@ -6,7 +6,13 @@ from .formatters import format_articles_output, format_single_article, normalize
 from .http_client import HttpClient, get_http_client
 from .providers import create_llm_provider
 from .settings import cvm_settings, settings
-from .text_utils import extract_clean_text_from_html, format_cache_key, normalize_company_name, truncate_text
+from .text_utils import (
+    cleanup_think_tags,
+    extract_clean_text_from_html,
+    format_cache_key,
+    normalize_company_name,
+    truncate_text,
+)
 
 __all__ = [
     "DirectoryConfigs",
@@ -22,6 +28,7 @@ __all__ = [
     "format_cache_key",
     "truncate_text",
     "extract_clean_text_from_html",
+    "cleanup_think_tags",
     "format_articles_output",
     "format_single_article",
     "normalize_article",
