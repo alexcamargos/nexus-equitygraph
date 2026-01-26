@@ -1,7 +1,7 @@
 """Text processing utilities for Nexus EquityGraph."""
 
 import re
-from typing import Optional
+from typing import Any, Optional
 
 import trafilatura
 from loguru import logger
@@ -108,14 +108,25 @@ def extract_clean_text_from_html(html_content: str) -> str:
         return ""
 
 
-def cleanup_think_tags(content: str) -> str:
+def cleanup_think_tags(content: str | Any) -> str:
     """Removes <think>...</think> tags from the content.
 
     Args:
-        content (str): The text content containing potential think tags.
+        content (str | Any): The text content containing potential think tags.
+                             Accepts Any to handle LangChain's complex content types.
 
     Returns:
         str: Cleaned content without the think tags.
     """
+
+    if content is None:
+        return ""
+
+    if not isinstance(content, str):
+        try:
+            content = str(content)
+        except (ValueError, TypeError, AttributeError) as error:
+            logger.error(f"Failed to convert content to string in cleanup_think_tags: {error}")
+            return ""
 
     return RE_THINK_TAGS.sub("", content).strip()
