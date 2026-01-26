@@ -556,3 +556,29 @@ class TestCleanupThinkTags:
 
         # Assert: Returns empty string.
         assert result == ""
+
+    def test_handles_none_input(self):
+        """Test that None input returns empty string instead of 'None'."""
+
+        # Act: Call cleanup_think_tags with None.
+        result = cleanup_think_tags(None)
+
+        # Assert: Returns empty string.
+        assert result == ""
+
+    def test_handles_str_conversion_error(self, mocker):
+        """Test that string conversion errors are caught and logged."""
+
+        # Arrange: Object that raises error on str().
+        class BrokenObject:
+            def __str__(self):
+                raise ValueError("Simulated conversion error")
+
+        mock_logger = mocker.patch("nexus_equitygraph.core.text_utils.logger")
+
+        # Act: Call cleanup_think_tags.
+        result = cleanup_think_tags(BrokenObject())
+
+        # Assert: Returns empty string and logs error.
+        assert result == ""
+        mock_logger.error.assert_called_once()
