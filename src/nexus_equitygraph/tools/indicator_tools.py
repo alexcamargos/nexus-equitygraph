@@ -397,7 +397,18 @@ def get_auditor_info(ticker: str) -> str:
     if "parecer" in data and not data["parecer"].empty:
         df = data["parecer"]
         # Filter valid rows
-        mask_valid = df["TP_RELAT_AUD"].notna() | df["DS_OPINIAO"].notna()
+        has_tp = "TP_RELAT_AUD" in df.columns
+        has_ds = "DS_OPINIAO" in df.columns
+        
+        if has_tp and has_ds:
+            mask_valid = df["TP_RELAT_AUD"].notna() | df["DS_OPINIAO"].notna()
+        elif has_tp:
+            mask_valid = df["TP_RELAT_AUD"].notna()
+        elif has_ds:
+            mask_valid = df["DS_OPINIAO"].notna()
+        else:
+            mask_valid = pd.Series([False] * len(df), index=df.index)
+
         valid_rows = df[mask_valid].sort_values(by="DT_REFER", ascending=False)
 
         if not valid_rows.empty:
