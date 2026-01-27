@@ -18,3 +18,4 @@ class DirectoryConfigs:
     CVM_SUB_DIRECTORY: Path = DATA_DIRECTORY / "cvm"
     LOG_DIRECTORY: Path = DATA_DIRECTORY / "logs"
     NEWS_SUB_DIRECTORY: Path = DATA_DIRECTORY / "news"
+    PROMPTS_DIR: Path = BASE_DIRECTORY / "src" / "nexus_equitygraph" / "agents" / "prompts"
