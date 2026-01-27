@@ -130,3 +130,21 @@ def cleanup_think_tags(content: str | Any) -> str:
             return ""
 
     return RE_THINK_TAGS.sub("", content).strip()
+
+
+def clean_json_markdown(content: str) -> str:
+    """Removes markdown code blocks (```json ... ```) from the content.
+
+    Args:
+        content (str): The text content containing markdown code blocks.
+
+    Returns:
+        str: Cleaned content with just the JSON string (or original if no markdown).
+    """
+
+    if "```json" in content:
+        content = content.split("```json")[1].split("```")[0].strip()
+    elif "```" in content:
+        content = content.replace("```", "").strip()
+
+    return content
