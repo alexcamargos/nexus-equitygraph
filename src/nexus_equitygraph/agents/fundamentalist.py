@@ -31,7 +31,7 @@ from nexus_equitygraph.tools.indicator_tools import (
 from nexus_equitygraph.tools.market_tools import get_company_name_from_ticker, get_current_stock_price
 
 
-# pylint: disable=too-many-arguments, too-many-locals
+# pylint: disable=too-few-public-methods
 class FundamentalistAgent:
     """Agent that performs fundamental analysis on companies using financial statements and LLMs."""
 
