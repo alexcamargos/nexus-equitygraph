@@ -30,6 +30,14 @@ class InsufficientDataError(CVMDataError):
     """Exception raised when there is insufficient data for calculation."""
 
 
+class PromptError(NexusEquityGraphError):
+    """Exception raised when there is an error retrieving a prompt."""
+
+
+class PromptNotFoundError(PromptError):
+    """Exception raised when a specific prompt key is not found."""
+
+
 def handle_indicator_exceptions(operation_name: str) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator that provides standardized exception handling for indicator tools.
 
