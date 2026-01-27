@@ -42,6 +42,7 @@ class NexusEquityGraphSettings(BaseAppSettings):
     # Ollama Configuration
     ollama_base_url: Annotated[str | None, Field(validation_alias="OLLAMA_BASE_URL")] = None
     ollama_default_model: Annotated[str | None, Field(validation_alias="OLLAMA_DEFAULT_MODEL")] = None
+    ollama_model_reasoning: Annotated[str | None, Field(validation_alias="OLLAMA_MODEL_REASONING")] = None
 
     # Groq Configuration
     groq_default_model: Annotated[str | None, Field(validation_alias="GROQ_DEFAULT_MODEL")] = None
