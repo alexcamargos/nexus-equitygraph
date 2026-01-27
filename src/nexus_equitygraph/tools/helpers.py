@@ -228,3 +228,157 @@ def process_and_format_bpp_for_year(mapper: Any, year: str) -> List[str]:
         output.append(f"Patrimônio Líquido: {equity}")
 
     return output
+
+
+def ensure_sa_suffix(ticker: str) -> str:
+    """Ensures the ticker has the .SA suffix for Brazilian stocks.
+
+    Args:
+        ticker (str): The company ticker.
+
+    Returns:
+        str: The ticker with .SA suffix if it was missing.
+    """
+
+    ticker = ticker.upper().strip()
+    if not ticker.endswith(".SA") and len(ticker) <= 6:
+        ticker += ".SA"
+
+    return ticker
+
+
+def calculate_sma_status(price_history: pd.DataFrame, current_price: float, window: int) -> str:
+    """Calculates status against a Simple Moving Average (SMA).
+
+    Args:
+        price_history (pd.DataFrame): Historical price data.
+        current_price (float): The current stock price.
+        window (int): The window size for the SMA.
+
+    Returns:
+        str: Status message regarding the SMA.
+    """
+
+    if len(price_history) < window:
+        return f"SMA {window}: Dados insuficientes"
+
+    sma = price_history['Close'].rolling(window=window).mean().iloc[-1]
+    movement = "acima" if current_price > sma else "abaixo"
+
+    return f"Preço atual está {movement} da média móvel de {window} dias (SMA {window}: {sma:.2f})"
+
+
+def calculate_rsi(price_history: pd.DataFrame, window: int = 14) -> str:
+    """Calculates the Relative Strength Index (RSI).
+
+    Args:
+        price_history (pd.DataFrame): Historical price data.
+        window (int): The window size for RSI calculation.
+
+    Returns:
+        str: RSI status message.
+    """
+
+    if len(price_history) < window + 1:
+        return f"RSI {window}: Dados insuficientes"
+
+    delta = price_history['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean().iloc[-1]
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean().iloc[-1]
+
+    if loss == 0:
+        return f"Índice de Força Relativa (RSI {window}): 100.00"
+
+    relative_strength_ratio = gain / loss
+    relative_strength_index = 100 - (100 / (1 + relative_strength_ratio))
+
+    return f"Índice de Força Relativa (RSI {window}): {relative_strength_index:.2f}"
+
+
+def calculate_volatility(price_history: pd.DataFrame) -> str:
+    """Calculates volatility based on standard deviation of returns.
+
+    Args:
+        price_history (pd.DataFrame): Historical price data.
+
+    Returns:
+        str: Volatilidade status message.
+    """
+
+    if len(price_history) < 2:
+        return "Volatilidade: Dados insuficientes"
+
+    returns = price_history['Close'].pct_change().dropna()
+    volatility = returns.std() * 100
+
+    return f"Volatilidade (desvio padrão dos retornos): {volatility:.2f}%"
+
+
+def calculate_price_range(price_history: pd.DataFrame) -> str:
+    """Calculates max and min prices in the period.
+
+    Args:
+        price_history (pd.DataFrame): Historical price data.
+
+    Returns:
+        str: Range status message.
+    """
+
+    if price_history.empty:
+        return "Range de Preço: Dados insuficientes"
+
+    max_price = price_history['Close'].max()
+    min_price = price_history['Close'].min()
+
+    return f"Preço máximo no período: {max_price:.2f}, Preço mínimo no período: {min_price:.2f}"
+
+
+def determine_trend(price_history: pd.DataFrame, days: int = 5) -> str:
+    """Determines trend based on recent closing prices.
+
+    Args:
+        price_history (pd.DataFrame): Historical price data.
+        days (int): Number of days to consider for trend determination.
+
+    Returns:
+        str: Trend status message.
+    """
+
+    if len(price_history) < days:
+        return f"Tendência ({days}d): Dados insuficientes"
+
+    recent_prices = price_history['Close'].tail(days)
+    if recent_prices.is_monotonic_increasing:
+        trend = "alta"
+    elif recent_prices.is_monotonic_decreasing:
+        trend = "baixa"
+    else:
+        trend = "lateral"
+
+    return f"Tendência nos últimos {days} dias: {trend}"
+
+
+def determine_general_trend(price_history: pd.DataFrame) -> str:
+    """Determines general trend comparing start and end of period.
+
+    Args:
+        price_history (pd.DataFrame): Historical price data.
+
+    Returns:
+        str: General trend status message.
+    """
+
+    if len(price_history) < 2:
+        return "Tendência Geral: Dados insuficientes"
+
+    start_price = price_history['Close'].iloc[0]
+    end_price = price_history['Close'].iloc[-1]
+
+    if end_price > start_price:
+        trend = "alta"
+    elif end_price < start_price:
+        trend = "baixa"
+    else:
+        trend = "lateral"
+
+    return f"Tendência geral no período: {trend}"
