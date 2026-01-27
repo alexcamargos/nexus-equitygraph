@@ -12,7 +12,7 @@ from requests import RequestException
 from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
 from nexus_equitygraph.core.providers import create_llm_provider
 from nexus_equitygraph.core.settings import settings
-from nexus_equitygraph.core.text_utils import cleanup_think_tags
+from nexus_equitygraph.core.text_utils import cleanup_think_tags, clean_json_markdown
 from nexus_equitygraph.domain.state import AgentAnalysis, FinancialMetric, MarketAgentState
 from nexus_equitygraph.tools.financial_tools import get_financial_statements
 from nexus_equitygraph.tools.helpers import ensure_sa_suffix
@@ -47,7 +47,8 @@ class FundamentalistAgent:
         self.state = state
         self.prompt_manager = prompt_manager
         # Use configured provider/model from settings, temperature=0 for deterministic output.
-        self.llm = llm or create_llm_provider(temperature=0, model_name=settings.ollama_default_model)
+        model_name = settings.ollama_model_reasoning or settings.ollama_default_model
+        self.llm = llm or create_llm_provider(temperature=0, model_name=model_name)
         self.ticker = state.ticker
 
     def _identify_company(self) -> tuple[str, str]:
@@ -184,10 +185,7 @@ class FundamentalistAgent:
 
         try:
             # Clean markdown code blocks
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.replace("```", "").strip()
+            content = clean_json_markdown(content)
 
             data = json.loads(content)
 
