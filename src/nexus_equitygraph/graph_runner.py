@@ -29,7 +29,15 @@ class NexusGraph:
 
         logger.info(f"Starting NexusGraph execution for {ticker}")
 
-        inputs = {"ticker": ticker.upper(), "iteration": iteration, "analyses": [], "messages": []}
+        inputs = {
+            "ticker": ticker.upper(),
+            "iteration": iteration,
+            "analyses": [],
+            "messages": [],
+            "feedback": None,
+            "final_report": None,
+            "metadata": None,
+        }
 
         try:
             # Execute the workflow
