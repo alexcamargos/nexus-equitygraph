@@ -4,6 +4,49 @@ from datetime import datetime
 
 import pandas as pd
 import pytest
+from nexus_equitygraph.domain.state import MarketAgentState
+
+def pytest_addoption(parser):
+    """Add custom CLI options."""
+    parser.addoption(
+        "--run-smoke", 
+        action="store_true", 
+        default=False, 
+        help="run heavy smoke tests (agents integration)"
+    )
+
+
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers", "smoke: mark test as heavy smoke test"
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify collected tests to skip smoke tests by default."""
+    if config.getoption("--run-smoke"):
+        # If flag is present, run everything
+        return
+
+    skip_smoke = pytest.mark.skip(reason="need --run-smoke option to run")
+    
+    for item in items:
+        if "smoke" in item.keywords:
+            item.add_marker(skip_smoke)
+
+@pytest.fixture
+def base_state():
+    """Provides a basic MarketAgentState for agent testing."""
+    return MarketAgentState(
+        ticker="WEGE3",
+        iteration=1,
+        analyses=[],
+        messages=[],
+        feedback=None,
+        final_report=None,
+        metadata=None,
+    )
 
 
 @pytest.fixture
