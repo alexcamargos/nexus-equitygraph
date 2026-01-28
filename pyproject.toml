@@ -74,6 +74,9 @@ packages = ["src/nexus_equitygraph"]
 pythonpath = "src"
 testpaths = ["tests"]
 addopts = "--cov=nexus_equitygraph --cov-report=term-missing"
+markers = [
+    "smoke: marks tests as slow smoke tests (skipped by default, run with --run-smoke)",
+]
 
 [tool.isort]
 profile = "black"
