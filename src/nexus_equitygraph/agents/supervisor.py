@@ -29,7 +29,7 @@ class SupervisorAgent:
         self.prompt_manager = prompt_manager
         # Use configured provider/model from settings, temperature=0 for deterministic output.
         model_name = settings.ollama_model_reasoning or settings.ollama_default_model
-        self.llm = llm or create_llm_provider(temperature=0.2, model_name=model_name)
+        self.llm = llm or create_llm_provider(temperature=0, model_name=model_name)
         self.ticker = state.ticker
         self.analyses = state.analyses
         self.feedback = state.feedback

@@ -31,7 +31,7 @@ class SentimentAgent:
         self.state = state
         self.prompt_manager = prompt_manager
         # Use configured provider/model from settings, temperature=0 for deterministic output.
-        model_name = settings.ollama_default_model
+        model_name = settings.ollama_default_model or settings.ollama_model_reasoning
         self.llm = llm or create_llm_provider(temperature=0, model_name=model_name)
         self.ticker = state.ticker
 
@@ -95,18 +95,29 @@ class SentimentAgent:
             if not details:
                 details = str(data)
 
-            metrics_objs = [
-                FinancialMetric(
-                    name=metric.get("name", "N/A"),
-                    value=metric.get("value", 0),
-                    unit=metric.get("unit", ""),
-                    period=metric.get("period", ""),
-                    description=metric.get("description", ""),
-                )
-                for metric in data.get("metrics", [])
-            ]
+            metrics_objs = []
+            for metric in data.get("metrics", []):
+                if isinstance(metric, str):
+                    metrics_objs.append(FinancialMetric(
+                        name=metric, value=0, unit="", period="", description=""
+                    ))
+                else:
+                    metrics_objs.append(
+                        FinancialMetric(
+                            name=metric.get("name", "N/A"),
+                            value=metric.get("value", 0),
+                            unit=metric.get("unit", ""),
+                            period=metric.get("period", ""),
+                            description=metric.get("description", ""),
+                        )
+                    )
 
-            sources = ["DuckDuckGo Search"]
+            # Get sources from data if available.
+            sources = data.get("sources")
+            if not sources:
+                sources = ["DuckDuckGo Search"]
+            elif isinstance(sources, str):
+                sources = [sources]
 
             return AgentAnalysis(
                 agent_name="Sonar",
@@ -155,7 +166,7 @@ class SentimentAgent:
         # 4. Parse and Structure Result
         analysis = self._parse_llm_response(content)
 
-        return {"analyses": [analysis], "metadata": {}}
+        return {"analyses": [analysis]}
 
 
 def sentiment_node(state: MarketAgentState):
