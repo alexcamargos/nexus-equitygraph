@@ -6,15 +6,13 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from loguru import logger
 from pydantic import ValidationError
 
+from nexus_equitygraph.agents.base import BaseAgent
 from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
-from nexus_equitygraph.core.providers import create_llm_provider
-from nexus_equitygraph.core.settings import settings
-from nexus_equitygraph.core.text_utils import clean_json_markdown, cleanup_think_tags
 from nexus_equitygraph.domain.state import MarketAgentState, ReviewFeedback
 
 
 # pylint: disable=too-few-public-methods
-class ReviewerAgent:
+class ReviewerAgent(BaseAgent):
     """Agent that reviews the reports produced by other analysts."""
 
     def __init__(self, state: MarketAgentState, prompt_manager: PromptManagerProtocol, llm=None) -> None:
@@ -25,13 +23,10 @@ class ReviewerAgent:
             prompt_manager (PromptManagerProtocol): The prompt manager.
             llm (Optional[BaseLanguageModel]): The language model to use. If None, a default will be created.
         """
+        # Call super init to setup LLM and basics
+        super().__init__(state, prompt_manager, llm)
 
-        self.state = state
-        self.prompt_manager = prompt_manager
-        # Use configured provider/model from settings, temperature=0 for deterministic output.
-        model_name = settings.ollama_model_reasoning or settings.ollama_default_model
-        self.llm = llm or create_llm_provider(temperature=0, model_name=model_name)
-        self.ticker = state.ticker
+        # Store execution-specific properties
         self.analyses = state.analyses
         self.iteration = state.iteration
 
@@ -52,20 +47,6 @@ class ReviewerAgent:
 
         return f"Revise estas análises para o ativo {self.ticker} (Iteração {self.iteration}):\n{context_text}"
 
-    def _execute_llm_analysis(self, messages: list) -> str:
-        """Invokes the LLM and cleans the response.
-
-        Args:
-            messages (list): List of messages for the LLM.
-
-        Returns:
-            str: Cleaned LLM response content.
-        """
-
-        response = self.llm.invoke(messages)
-
-        return cleanup_think_tags(response.content)
-
     def _parse_llm_response(self, content: str) -> ReviewFeedback:
         """Parses the LLM response content into structured ReviewFeedback.
 
@@ -77,10 +58,8 @@ class ReviewerAgent:
         """
 
         try:
-            # Clean markdown code blocks
-            content = clean_json_markdown(content)
+            data = self._safe_parse_json(content)
 
-            data = json.loads(content)
             if "agent_name" not in data:
                 data["agent_name"] = "Reviewer"
 

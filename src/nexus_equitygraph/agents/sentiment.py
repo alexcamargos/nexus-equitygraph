@@ -7,33 +7,15 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from loguru import logger
 from pydantic import ValidationError
 
-from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
-from nexus_equitygraph.core.providers import create_llm_provider
-from nexus_equitygraph.core.settings import settings
-from nexus_equitygraph.core.text_utils import clean_json_markdown, cleanup_think_tags
+from nexus_equitygraph.agents.base import BaseAgent
+from nexus_equitygraph.core.prompt_manager import get_prompt_manager
 from nexus_equitygraph.domain.state import AgentAnalysis, FinancialMetric, MarketAgentState
 from nexus_equitygraph.tools.news_tools import fetch_news_articles
 
 
 # pylint: disable=too-few-public-methods
-class SentimentAgent:
+class SentimentAgent(BaseAgent):
     """Agent that analyzes market sentiment based on news."""
-
-    def __init__(self, state: MarketAgentState, prompt_manager: PromptManagerProtocol, llm=None) -> None:
-        """Initialize the SentimentAgent.
-
-        Args:
-            state (MarketAgentState): The market agent state.
-            prompt_manager (PromptManagerProtocol): The prompt manager.
-            llm (Optional[BaseLanguageModel]): The language model to use. If None, a default will be created.
-        """
-
-        self.state = state
-        self.prompt_manager = prompt_manager
-        # Use configured provider/model from settings, temperature=0 for deterministic output.
-        model_name = settings.ollama_default_model or settings.ollama_model_reasoning
-        self.llm = llm or create_llm_provider(temperature=0, model_name=model_name)
-        self.ticker = state.ticker
 
     def _fetch_news(self) -> str:
         """Fetches market news.
@@ -60,20 +42,6 @@ class SentimentAgent:
 
         return f"Analise o sentimento para {self.ticker} com base nestas notícias recentes:\n\n{news_data}"
 
-    def _execute_llm_analysis(self, messages: list) -> str:
-        """Invokes the LLM and cleans the response.
-
-        Args:
-            messages (list): List of messages for the LLM.
-
-        Returns:
-            str: Cleaned LLM response content.
-        """
-
-        response = self.llm.invoke(messages)
-
-        return cleanup_think_tags(response.content)
-
     def _parse_llm_response(self, content: str) -> AgentAnalysis:
         """Parses the LLM response content into structured AgentAnalysis.
 
@@ -85,10 +53,7 @@ class SentimentAgent:
         """
 
         try:
-            # Clean markdown code blocks
-            content = clean_json_markdown(content)
-
-            data = json.loads(content)
+            data = self._safe_parse_json(content)
 
             summary = data.get("summary", "Resumo indisponível.")
             details = data.get("details", "")
@@ -98,9 +63,7 @@ class SentimentAgent:
             metrics_objs = []
             for metric in data.get("metrics", []):
                 if isinstance(metric, str):
-                    metrics_objs.append(FinancialMetric(
-                        name=metric, value=0, unit="", period="", description=""
-                    ))
+                    metrics_objs.append(FinancialMetric(name=metric, value=0, unit="", period="", description=""))
                 else:
                     metrics_objs.append(
                         FinancialMetric(

@@ -4,35 +4,16 @@ import json
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from loguru import logger
 from pydantic import ValidationError
 
-from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
-from nexus_equitygraph.core.providers import create_llm_provider
-from nexus_equitygraph.core.settings import settings
-from nexus_equitygraph.core.text_utils import clean_json_markdown, cleanup_think_tags
+from nexus_equitygraph.agents.base import BaseAgent
+from nexus_equitygraph.core.prompt_manager import get_prompt_manager
 from nexus_equitygraph.domain.state import AgentAnalysis, FinancialMetric, MarketAgentState
 
 
 # pylint: disable=too-few-public-methods
-class RiskManagerAgent:
+class RiskManagerAgent(BaseAgent):
     """Agent that analyzes macro and micro factors that may threaten the asset."""
-
-    def __init__(self, state: MarketAgentState, prompt_manager: PromptManagerProtocol, llm=None) -> None:
-        """Initialize the RiskManagerAgent.
-
-        Args:
-            state (MarketAgentState): The market agent state.
-            prompt_manager (PromptManagerProtocol): The prompt manager.
-            llm (Optional[BaseLanguageModel]): The language model to use. If None, a default will be created.
-        """
-
-        self.state = state
-        self.prompt_manager = prompt_manager
-        # Use configured provider/model from settings, temperature=0 for deterministic output.
-        model_name = settings.ollama_model_reasoning or settings.ollama_default_model
-        self.llm = llm or create_llm_provider(temperature=0, model_name=model_name)
-        self.ticker = state.ticker
 
     def _prepare_llm_context(self) -> str:
         """Formats the context message for the LLM.
@@ -40,22 +21,8 @@ class RiskManagerAgent:
         Returns:
             str: Formatted context message.
         """
-        
+
         return f"Avalie os riscos associados ao investimento em {self.ticker}."
-
-    def _execute_llm_analysis(self, messages: list) -> str:
-        """Invokes the LLM and cleans the response.
-
-        Args:
-            messages (list): List of messages for the LLM.
-
-        Returns:
-            str: Cleaned LLM response content.
-        """
-
-        response = self.llm.invoke(messages)
-
-        return cleanup_think_tags(response.content)
 
     def _parse_llm_response(self, content: str) -> AgentAnalysis:
         """Parses the LLM response content into structured AgentAnalysis.
@@ -68,10 +35,7 @@ class RiskManagerAgent:
         """
 
         try:
-            # Clean markdown code blocks
-            content = clean_json_markdown(content)
-
-            data = json.loads(content)
+            data = self._safe_parse_json(content)
 
             summary = data.get("summary", "Resumo indisponível.")
             details = data.get("details", "")
@@ -81,9 +45,7 @@ class RiskManagerAgent:
             metrics_objs = []
             for metric in data.get("metrics", []):
                 if isinstance(metric, str):
-                    metrics_objs.append(FinancialMetric(
-                        name=metric, value=0, unit="", period="", description=""
-                    ))
+                    metrics_objs.append(FinancialMetric(name=metric, value=0, unit="", period="", description=""))
                 else:
                     metrics_objs.append(
                         FinancialMetric(
@@ -120,7 +82,7 @@ class RiskManagerAgent:
 
     def analyze(self) -> dict:
         """Orchestrates the risk analysis process.
-        
+
         Returns:
             dict: The analysis result containing analyses and metadata.
         """

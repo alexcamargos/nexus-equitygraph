@@ -9,10 +9,8 @@ from loguru import logger
 from pydantic import ValidationError
 from requests import RequestException
 
-from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
-from nexus_equitygraph.core.providers import create_llm_provider
-from nexus_equitygraph.core.settings import settings
-from nexus_equitygraph.core.text_utils import cleanup_think_tags, clean_json_markdown
+from nexus_equitygraph.agents.base import BaseAgent
+from nexus_equitygraph.core.prompt_manager import get_prompt_manager
 from nexus_equitygraph.domain.state import AgentAnalysis, FinancialMetric, MarketAgentState
 from nexus_equitygraph.tools.financial_tools import get_financial_statements
 from nexus_equitygraph.tools.helpers import ensure_sa_suffix
@@ -32,24 +30,8 @@ from nexus_equitygraph.tools.market_tools import get_company_name_from_ticker, g
 
 
 # pylint: disable=too-few-public-methods
-class FundamentalistAgent:
+class FundamentalistAgent(BaseAgent):
     """Agent that performs fundamental analysis on companies using financial statements and LLMs."""
-
-    def __init__(self, state: MarketAgentState, prompt_manager: PromptManagerProtocol, llm=None) -> None:
-        """Initialize the FundamentalistAgent.
-        
-        Args:
-            state (MarketAgentState): The market agent state.
-            prompt_manager (PromptManagerProtocol): The prompt manager.
-            llm (Optional[BaseLanguageModel]): The language model to use. If None, a default will be created.
-        """
-
-        self.state = state
-        self.prompt_manager = prompt_manager
-        # Use configured provider/model from settings, temperature=0 for deterministic output.
-        model_name = settings.ollama_model_reasoning or settings.ollama_default_model
-        self.llm = llm or create_llm_provider(temperature=0, model_name=model_name)
-        self.ticker = state.ticker
 
     def _identify_company(self) -> tuple[str, str]:
         """Resolves company name and search term.
@@ -158,20 +140,6 @@ class FundamentalistAgent:
         {indicators_context}
         """
 
-    def _execute_llm_analysis(self, messages: list) -> str:
-        """Invokes the LLM and cleans the response.
-
-        Args:
-            messages (list): List of messages for the LLM.
-
-        Returns:
-            str: Cleaned LLM response content.
-        """
-
-        response = self.llm.invoke(messages)
-
-        return cleanup_think_tags(response.content)
-
     def _parse_llm_response(self, content: str, valuation_metrics: str) -> AgentAnalysis:
         """Parses the LLM response content into structured AgentAnalysis.
 
@@ -184,10 +152,7 @@ class FundamentalistAgent:
         """
 
         try:
-            # Clean markdown code blocks
-            content = clean_json_markdown(content)
-
-            data = json.loads(content)
+            data = self._safe_parse_json(content)
 
             summary = data.get("summary", "Resumo indisponível.")
             details = data.get("details", "")
