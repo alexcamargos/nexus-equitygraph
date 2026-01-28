@@ -1,7 +1,10 @@
 """Output formatters for Nexus EquityGraph."""
 
+import datetime
+from pathlib import Path
 from typing import Dict, Protocol, Sequence, runtime_checkable
 
+from .configs import DirectoryConfigs
 from .text_utils import truncate_text
 
 
@@ -96,3 +99,50 @@ def format_articles_output(
         output.append(format_single_article(normalized))
 
     return "\n".join(output)
+
+
+def format_final_report(
+    ticker: str,
+    body: str,
+    metadata: Dict[str, str] | None = None,
+    template_path: Path | None = None,
+) -> str:
+    """Formats the final report using an external markdown template.
+
+    Args:
+        ticker: The ticker symbol analyzed.
+        body: The main content of the report.
+        metadata: Optional metadata (company name, sector, etc.).
+        template_path: Optional path to the report template file.
+
+    Returns:
+        The formatted report string.
+    """
+
+    # Determine template path, use default if not provided.
+    target_path = template_path or DirectoryConfigs().REPORT_TEMPLATE_FILE
+
+    # Load template content
+    try:
+        template_content = target_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return f"# Error: Report template not found at {target_path}\n\n{body}"
+
+    meta = metadata or {}
+
+    # Prepare context for replacement
+    context = {
+        "{company}": meta.get("company_name", "N/A"),
+        "{activity}": meta.get("activity", "N/A"),
+        "{sector}": meta.get("sector", "N/A"),
+        "{ticker}": ticker,
+        "{timestamp}": datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S'),
+        "{body}": body,
+    }
+
+    # Perform replacements in the template.
+    formatted = template_content
+    for placeholder, value in context.items():
+        formatted = formatted.replace(placeholder, value)
+
+    return formatted
