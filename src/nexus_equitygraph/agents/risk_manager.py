@@ -78,16 +78,22 @@ class RiskManagerAgent:
             if not details:
                 details = str(data)
 
-            metrics_objs = [
-                FinancialMetric(
-                    name=metric.get("name", "N/A"),
-                    value=metric.get("value", 0),
-                    unit=metric.get("unit", ""),
-                    period=metric.get("period", ""),
-                    description=metric.get("description", ""),
-                )
-                for metric in data.get("metrics", [])
-            ]
+            metrics_objs = []
+            for metric in data.get("metrics", []):
+                if isinstance(metric, str):
+                    metrics_objs.append(FinancialMetric(
+                        name=metric, value=0, unit="", period="", description=""
+                    ))
+                else:
+                    metrics_objs.append(
+                        FinancialMetric(
+                            name=metric.get("name", "N/A"),
+                            value=metric.get("value", 0),
+                            unit=metric.get("unit", ""),
+                            period=metric.get("period", ""),
+                            description=metric.get("description", ""),
+                        )
+                    )
 
             sources = ["Model Knowledge Base"]
 
@@ -135,7 +141,7 @@ class RiskManagerAgent:
         # 3. Parse and Structure Result
         analysis = self._parse_llm_response(content)
 
-        return {"analyses": [analysis], "metadata": {}}
+        return {"analyses": [analysis]}
 
 
 def risk_manager_node(state: MarketAgentState):

@@ -194,16 +194,22 @@ class FundamentalistAgent:
             if not details:
                 details = str(data)
 
-            metrics_objs = [
-                FinancialMetric(
-                    name=metric.get("name", "N/A"),
-                    value=metric.get("value", 0),
-                    unit=metric.get("unit", ""),
-                    period=metric.get("period", ""),
-                    description=metric.get("description", ""),
-                )
-                for metric in data.get("metrics", [])
-            ]
+            metrics_objs = []
+            for metric in data.get("metrics", []):
+                if isinstance(metric, str):
+                    metrics_objs.append(FinancialMetric(
+                        name=metric, value=0, unit="", period="", description=""
+                    ))
+                else:
+                    metrics_objs.append(
+                        FinancialMetric(
+                            name=metric.get("name", "N/A"),
+                            value=metric.get("value", 0),
+                            unit=metric.get("unit", ""),
+                            period=metric.get("period", ""),
+                            description=metric.get("description", ""),
+                        )
+                    )
 
             sources = ["CVM - Portal Dados Abertos", "Nexus Indicator Tools"]
             if "Mercado" in valuation_metrics:
