@@ -19,3 +19,5 @@ class DirectoryConfigs:
     LOG_DIRECTORY: Path = DATA_DIRECTORY / "logs"
     NEWS_SUB_DIRECTORY: Path = DATA_DIRECTORY / "news"
     PROMPTS_DIR: Path = BASE_DIRECTORY / "src" / "nexus_equitygraph" / "agents" / "prompts"
+    TEMPLATES_DIR: Path = BASE_DIRECTORY / "src" / "nexus_equitygraph" / "agents" / "templates"
+    REPORT_TEMPLATE_FILE: Path = TEMPLATES_DIR / "report_template.md"
