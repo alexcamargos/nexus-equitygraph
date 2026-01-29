@@ -1,16 +1,17 @@
 """Fundamentalist Agent for performing fundamental analysis on companies using financial statements and LLMs."""
 
-import json
 from datetime import datetime
+from typing import Optional
 
 import yfinance as yf
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from loguru import logger
-from pydantic import ValidationError
 from requests import RequestException
 
 from nexus_equitygraph.agents.base import BaseAgent
-from nexus_equitygraph.core.prompt_manager import get_prompt_manager
+from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
+from nexus_equitygraph.domain.schemas import AnalysisOutput
 from nexus_equitygraph.domain.state import AgentAnalysis, FinancialMetric, MarketAgentState
 from nexus_equitygraph.tools.financial_tools import get_financial_statements
 from nexus_equitygraph.tools.helpers import ensure_sa_suffix
@@ -33,15 +34,38 @@ from nexus_equitygraph.tools.market_tools import get_company_name_from_ticker, g
 class FundamentalistAgent(BaseAgent):
     """Agent that performs fundamental analysis on companies using financial statements and LLMs."""
 
+    def __init__(
+        self, state: MarketAgentState, prompt_manager: PromptManagerProtocol, llm: Optional[BaseChatModel] = None
+    ) -> None:
+        """Initialize the FundamentalistAgent.
+
+        Args:
+            state (MarketAgentState): The market agent state.
+            prompt_manager (PromptManagerProtocol): The prompt manager.
+            llm (Optional[BaseChatModel]): The language model to use. If None, a default will be created.
+        """
+
+        # Initialize BaseAgent with AnalysisOutput schema for structured output parsing.
+        super().__init__(state, prompt_manager, llm, output_schema=AnalysisOutput)
+
     def _identify_company(self) -> tuple[str, str]:
         """Resolves company name and search term.
-        
+
         Returns:
             tuple[str, str]: Company name and search term.
         """
 
         company_name = get_company_name_from_ticker.invoke({"ticker": self.ticker})
-        search_term = ensure_sa_suffix(company_name) if company_name else self.ticker
+
+        # Check for valid name. If invalid, fallback to ticker as search term.
+        is_invalid_name = not company_name or "nome não disponível" in company_name.lower()
+
+        # If name is not available, we use ticker for search.
+        if is_invalid_name:
+            company_name = self.ticker
+            search_term = self.ticker
+        else:
+            search_term = ensure_sa_suffix(company_name)
 
         return company_name, search_term
 
@@ -118,7 +142,7 @@ class FundamentalistAgent(BaseAgent):
         indicators_context: str,
     ) -> str:
         """Formats the context message for the LLM.
-        
+
         Args:
             company_name (str): The company name.
             current_price (float): The current stock price.
@@ -140,66 +164,41 @@ class FundamentalistAgent(BaseAgent):
         {indicators_context}
         """
 
-    def _parse_llm_response(self, content: str, valuation_metrics: str) -> AgentAnalysis:
-        """Parses the LLM response content into structured AgentAnalysis.
+    def _create_agent_analysis(self, output: AnalysisOutput, valuation_metrics: str) -> AgentAnalysis:
+        """Converts structured LLM output to AgentAnalysis state object.
 
         Args:
-            content (str): LLM response content.
-            valuation_metrics (str): Valuation data.
+            output (AnalysisOutput): Structured output from LLM.
+            valuation_metrics (str): Valuation data context.
 
         Returns:
             AgentAnalysis: Structured analysis result.
         """
-
-        try:
-            data = self._safe_parse_json(content)
-
-            summary = data.get("summary", "Resumo indisponível.")
-            details = data.get("details", "")
-            if not details:
-                details = str(data)
-
-            metrics_objs = []
-            for metric in data.get("metrics", []):
-                if isinstance(metric, str):
-                    metrics_objs.append(FinancialMetric(
-                        name=metric, value=0, unit="", period="", description=""
-                    ))
-                else:
-                    metrics_objs.append(
-                        FinancialMetric(
-                            name=metric.get("name", "N/A"),
-                            value=metric.get("value", 0),
-                            unit=metric.get("unit", ""),
-                            period=metric.get("period", ""),
-                            description=metric.get("description", ""),
-                        )
-                    )
-
-            sources = ["CVM - Portal Dados Abertos", "Nexus Indicator Tools"]
-            if "Mercado" in valuation_metrics:
-                sources.append("B3")
-
-            return AgentAnalysis(
-                agent_name="Graham",
-                ticker=self.ticker,
-                summary=summary,
-                details=details,
-                metrics=metrics_objs,
-                sources=sources,
-                timestamp=datetime.now().isoformat(),
+        metrics_objs = []
+        for metric in output.metrics:
+            metrics_objs.append(
+                FinancialMetric(
+                    name=metric.name,
+                    value=metric.value,
+                    unit=metric.unit or "",
+                    period=metric.period or "",
+                    description=metric.description or "",
+                )
             )
 
-        except (json.JSONDecodeError, AttributeError, TypeError, ValidationError) as error:
-            return AgentAnalysis(
-                agent_name="fundamentalist",
-                ticker=self.ticker,
-                summary="Erro na geração estruturada. Verifique logs.",
-                details=f"O LLM não retornou JSON válido.\nConteúdo Bruto:\n{content}\nErro: {error}",
-                metrics=[],
-                sources=["Error"],
-                timestamp=datetime.now().isoformat(),
-            )
+        sources = output.sources or ["CVM - Portal Dados Abertos", "Nexus Indicator Tools"]
+        if "Mercado" in valuation_metrics and "B3" not in sources:
+            sources.append("B3")
+
+        return AgentAnalysis(
+            agent_name="Graham",
+            ticker=self.ticker,
+            summary=output.summary,
+            details=output.details,
+            metrics=metrics_objs,
+            sources=sources,
+            timestamp=datetime.now().isoformat(),
+        )
 
     def _extract_metadata(self, target_ticker: str, company_name: str) -> dict:
         """Extracts metadata about the company.
@@ -258,13 +257,26 @@ class FundamentalistAgent(BaseAgent):
 
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"Gere a análise estruturada (JSON) para {self.ticker}:\n\n{context_msg}"),
+            HumanMessage(content=f"Gere a análise estruturada para {self.ticker}:\n\n{context_msg}"),
         ]
 
-        content = self._execute_llm_analysis(messages)
+        # Use BaseAgent excecution which now returns structured AnalysisOutput
+        try:
+            structured_output = self._execute_llm_analysis(messages)
+            analysis = self._create_agent_analysis(structured_output, val_data)
+        except Exception as e:
+            logger.error(f"Error in Fundamentalist Agent analysis: {e}")
+            analysis = AgentAnalysis(
+                agent_name="Graham",
+                ticker=self.ticker,
+                summary="Erro na geração da análise.",
+                details=f"Ocorreu um erro ao processar a análise fundamentalista: {str(e)}",
+                metrics=[],
+                sources=["Error"],
+                timestamp=datetime.now().isoformat(),
+            )
 
-        # 5. Parse and Structure Result
-        analysis = self._parse_llm_response(content, val_data)
+        # 5. Extract Metadata
         metadata = self._extract_metadata(target_ticker_for_tools, company_name)
 
         return {"analyses": [analysis], "metadata": metadata}

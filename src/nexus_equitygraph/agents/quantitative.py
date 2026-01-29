@@ -1,14 +1,15 @@
 """Quantitative Agent for performing technical analysis on companies using market data and LLMs."""
 
-import json
 from datetime import datetime
+from typing import Optional
 
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from loguru import logger
-from pydantic import ValidationError
 
 from nexus_equitygraph.agents.base import BaseAgent
-from nexus_equitygraph.core.prompt_manager import get_prompt_manager
+from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
+from nexus_equitygraph.domain.schemas import AnalysisOutput
 from nexus_equitygraph.domain.state import AgentAnalysis, FinancialMetric, MarketAgentState
 from nexus_equitygraph.tools.market_tools import get_stock_price_history
 
@@ -16,6 +17,20 @@ from nexus_equitygraph.tools.market_tools import get_stock_price_history
 # pylint: disable=too-few-public-methods
 class QuantitativeAgent(BaseAgent):
     """Agent that performs technical analysis on companies using market data and LLMs."""
+
+    def __init__(
+        self, state: MarketAgentState, prompt_manager: PromptManagerProtocol, llm: Optional[BaseChatModel] = None
+    ) -> None:
+        """Initialize the QuantitativeAgent.
+
+        Args:
+            state (MarketAgentState): The market agent state.
+            prompt_manager (PromptManagerProtocol): The prompt manager.
+            llm (Optional[BaseChatModel]): The language model to use. If None, a default will be created.
+        """
+
+        # Initialize BaseAgent with AnalysisOutput schema for structured output parsing.
+        super().__init__(state, prompt_manager, llm, output_schema=AnalysisOutput)
 
     def _fetch_market_data(self) -> str:
         """Fetches market data (stock history).
@@ -42,65 +57,41 @@ class QuantitativeAgent(BaseAgent):
             str: Formatted context message.
         """
 
-        return f"Gere um relatório quantitativo (JSON) para {self.ticker} com base nestes dados:\n\n{market_data}"
+        return f"Gere um relatório quantitativo para {self.ticker} com base nestes dados:\n\n{market_data}"
 
-    def _parse_llm_response(self, content: str) -> AgentAnalysis:
-        """Parses the LLM response content into structured AgentAnalysis.
+    def _create_agent_analysis(self, output: AnalysisOutput) -> AgentAnalysis:
+        """Converts structured LLM output to AgentAnalysis state object.
 
         Args:
-            content (str): LLM response content.
+            output (AnalysisOutput): Structured output from LLM.
 
         Returns:
             AgentAnalysis: Structured analysis result.
         """
 
-        try:
-            data = self._safe_parse_json(content)
-
-            summary = data.get("summary", "Resumo indisponível.")
-            details = data.get("details", "")
-            if not details:
-                details = str(data)
-
-            metrics_objs = []
-            for metric in data.get("metrics", []):
-                if isinstance(metric, str):
-                    metrics_objs.append(FinancialMetric(
-                        name=metric, value=0, unit="", period="", description=""
-                    ))
-                else:
-                    metrics_objs.append(
-                        FinancialMetric(
-                            name=metric.get("name", "N/A"),
-                            value=metric.get("value", 0),
-                            unit=metric.get("unit", ""),
-                            period=metric.get("period", ""),
-                            description=metric.get("description", ""),
-                        )
-                    )
-
-            sources = ["Yahoo Finance", "Nexus Market Tools"]
-
-            return AgentAnalysis(
-                agent_name="Vector",
-                ticker=self.ticker,
-                summary=summary,
-                details=details,
-                metrics=metrics_objs,
-                sources=sources,
-                timestamp=datetime.now().isoformat(),
+        metrics_objs = []
+        for metric in output.metrics:
+            metrics_objs.append(
+                FinancialMetric(
+                    name=metric.name,
+                    value=metric.value,
+                    unit=metric.unit or "",
+                    period=metric.period or "",
+                    description=metric.description or "",
+                )
             )
 
-        except (json.JSONDecodeError, AttributeError, TypeError, ValidationError) as error:
-            return AgentAnalysis(
-                agent_name="Vector",
-                ticker=self.ticker,
-                summary="Erro na geração estruturada. Verifique logs.",
-                details=f"O LLM não retornou JSON válido.\nConteúdo Bruto:\n{content}\nErro: {error}",
-                metrics=[],
-                sources=["Error"],
-                timestamp=datetime.now().isoformat(),
-            )
+        sources = output.sources or ["Yahoo Finance", "Nexus Market Tools"]
+
+        return AgentAnalysis(
+            agent_name="Vector",
+            ticker=self.ticker,
+            summary=output.summary,
+            details=output.details,
+            metrics=metrics_objs,
+            sources=sources,
+            timestamp=datetime.now().isoformat(),
+        )
 
     def analyze(self) -> dict:
         """Orchestrates the quantitative analysis process."""
@@ -120,10 +111,21 @@ class QuantitativeAgent(BaseAgent):
             HumanMessage(content=context_msg),
         ]
 
-        content = self._execute_llm_analysis(messages)
-
-        # 4. Parse and Structure Result
-        analysis = self._parse_llm_response(content)
+        # Use BaseAgent execution which now returns structured AnalysisOutput.
+        try:
+            structured_output = self._execute_llm_analysis(messages)
+            analysis = self._create_agent_analysis(structured_output)
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error(f"Error in Quantitative Agent analysis: {e}")
+            analysis = AgentAnalysis(
+                agent_name="Vector",
+                ticker=self.ticker,
+                summary="Erro na geração da análise.",
+                details=f"Ocorreu um erro ao processar a análise quantitativa: {str(e)}",
+                metrics=[],
+                sources=["Error"],
+                timestamp=datetime.now().isoformat(),
+            )
 
         return {"analyses": [analysis]}
 

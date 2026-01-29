@@ -1,14 +1,15 @@
 """Sentiment Agent for analyzing market news and sentiment."""
 
-import json
 from datetime import datetime
+from typing import Optional
 
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from loguru import logger
-from pydantic import ValidationError
 
 from nexus_equitygraph.agents.base import BaseAgent
-from nexus_equitygraph.core.prompt_manager import get_prompt_manager
+from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
+from nexus_equitygraph.domain.schemas import AnalysisOutput
 from nexus_equitygraph.domain.state import AgentAnalysis, FinancialMetric, MarketAgentState
 from nexus_equitygraph.tools.news_tools import fetch_news_articles
 
@@ -16,6 +17,20 @@ from nexus_equitygraph.tools.news_tools import fetch_news_articles
 # pylint: disable=too-few-public-methods
 class SentimentAgent(BaseAgent):
     """Agent that analyzes market sentiment based on news."""
+
+    def __init__(
+        self, state: MarketAgentState, prompt_manager: PromptManagerProtocol, llm: Optional[BaseChatModel] = None
+    ) -> None:
+        """Initialize the SentimentAgent.
+
+        Args:
+            state (MarketAgentState): The market agent state.
+            prompt_manager (PromptManagerProtocol): The prompt manager.
+            llm (Optional[BaseChatModel]): The language model to use. If None, a default will be created.
+        """
+
+        # Initialize BaseAgent with AnalysisOutput schema for structured output parsing.
+        super().__init__(state, prompt_manager, llm, output_schema=AnalysisOutput)
 
     def _fetch_news(self) -> str:
         """Fetches market news.
@@ -42,66 +57,39 @@ class SentimentAgent(BaseAgent):
 
         return f"Analise o sentimento para {self.ticker} com base nestas notícias recentes:\n\n{news_data}"
 
-    def _parse_llm_response(self, content: str) -> AgentAnalysis:
-        """Parses the LLM response content into structured AgentAnalysis.
+    def _create_agent_analysis(self, output: AnalysisOutput) -> AgentAnalysis:
+        """Converts structured LLM output to AgentAnalysis state object.
 
         Args:
-            content (str): LLM response content.
+            output (AnalysisOutput): Structured output from LLM.
 
         Returns:
             AgentAnalysis: Structured analysis result.
         """
 
-        try:
-            data = self._safe_parse_json(content)
-
-            summary = data.get("summary", "Resumo indisponível.")
-            details = data.get("details", "")
-            if not details:
-                details = str(data)
-
-            metrics_objs = []
-            for metric in data.get("metrics", []):
-                if isinstance(metric, str):
-                    metrics_objs.append(FinancialMetric(name=metric, value=0, unit="", period="", description=""))
-                else:
-                    metrics_objs.append(
-                        FinancialMetric(
-                            name=metric.get("name", "N/A"),
-                            value=metric.get("value", 0),
-                            unit=metric.get("unit", ""),
-                            period=metric.get("period", ""),
-                            description=metric.get("description", ""),
-                        )
-                    )
-
-            # Get sources from data if available.
-            sources = data.get("sources")
-            if not sources:
-                sources = ["DuckDuckGo Search"]
-            elif isinstance(sources, str):
-                sources = [sources]
-
-            return AgentAnalysis(
-                agent_name="Sonar",
-                ticker=self.ticker,
-                summary=summary,
-                details=details,
-                metrics=metrics_objs,
-                sources=sources,
-                timestamp=datetime.now().isoformat(),
+        metrics_objs = []
+        for metric in output.metrics:
+            metrics_objs.append(
+                FinancialMetric(
+                    name=metric.name,
+                    value=metric.value,
+                    unit=metric.unit or "",
+                    period=metric.period or "",
+                    description=metric.description or "",
+                )
             )
 
-        except (json.JSONDecodeError, AttributeError, TypeError, ValidationError) as error:
-            return AgentAnalysis(
-                agent_name="Sonar",
-                ticker=self.ticker,
-                summary="Erro na geração estruturada. Verifique logs.",
-                details=f"O LLM não retornou JSON válido.\nConteúdo Bruto:\n{content}\nErro: {error}",
-                metrics=[],
-                sources=["Error"],
-                timestamp=datetime.now().isoformat(),
-            )
+        sources = output.sources or ["DuckDuckGo Search"]
+
+        return AgentAnalysis(
+            agent_name="Sonar",
+            ticker=self.ticker,
+            summary=output.summary,
+            details=output.details,
+            metrics=metrics_objs,
+            sources=sources,
+            timestamp=datetime.now().isoformat(),
+        )
 
     def analyze(self) -> dict:
         """Orchestrates the sentiment analysis process.
@@ -124,10 +112,21 @@ class SentimentAgent(BaseAgent):
             HumanMessage(content=context_msg),
         ]
 
-        content = self._execute_llm_analysis(messages)
-
-        # 4. Parse and Structure Result
-        analysis = self._parse_llm_response(content)
+        # Use BaseAgent execution which now returns structured AnalysisOutput
+        try:
+            structured_output = self._execute_llm_analysis(messages)
+            analysis = self._create_agent_analysis(structured_output)
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error(f"Error in Sentiment Agent analysis: {e}")
+            analysis = AgentAnalysis(
+                agent_name="Sonar",
+                ticker=self.ticker,
+                summary="Erro na geração da análise.",
+                details=f"Ocorreu um erro ao processar a análise de sentimento: {str(e)}",
+                metrics=[],
+                sources=["Error"],
+                timestamp=datetime.now().isoformat(),
+            )
 
         return {"analyses": [analysis]}
 
