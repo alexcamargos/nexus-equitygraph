@@ -13,9 +13,9 @@ SCHEMA DE RESPOSTA (JSON):
 {
     "summary": "Resumo executivo do sentimento (max 3 linhas).",
     "details": "Análise detalhada em Markdown. Discuta Notícias Positivas vs Negativas.",
-    "sentiment_score": (int 0-100, onde 0 é muito negativo e 100 muito positivo),
     "metrics": [
-        {"name": "Sentimento Geral", "value": "Valor (ex: Positivo)", "unit": "N/A", "period": "Recente", "description": "Consenso das notícias"}
+        {"name": "Sentiment Score", "value": 75, "unit": "0-100", "period": "Recente", "description": "Pontuação de sentimento (0=Negativo, 100=Positivo)"},
+        {"name": "Sentimento Geral", "value": "Positivo", "unit": "N/A", "period": "Recente", "description": "Consenso das notícias"}
     ],
     "news_sources": ["Título da Notícia 1", "Título da Notícia 2"]
 }

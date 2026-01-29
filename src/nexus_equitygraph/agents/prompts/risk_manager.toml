@@ -13,17 +13,22 @@ Diretrizes:
 SCHEMA DE RESPOSTA (JSON):
 {
     "summary": "Resumo executivo dos riscos (max 3 linhas).",
-    "details": "Análise detalhada em Markdown. Discuta Regulação, Mercado e Governança.",
-    "risk_level": "Nível de Risco (ex: Alto)",
+    "details": "Análise detalhada em Markdown. Discuta Regulação, Mercado e Governança. Liste os principais RISCOS aqui como bullet points.",
     "metrics": [
         {
+            "name": "Risk Level",
+            "value": "Alto",
+            "unit": "Baixo/Médio/Alto/Crítico",
+            "period": "Atual",
+            "description": "Nível geral de risco"
+        },
+        {
             "name": "Nome da Métrica (ex: Alavancagem)",
-            "value": "Valor (ex: 3.5x ou Alto)",
-            "unit": "Unidade (opcional)",
+            "value": 3.5,
+            "unit": "x",
             "period": "Período (opcional)",
             "description": "Descrição breve"
         }
-    ],
-    "risks": ["Risco 1", "Risco 2", "Risco 3"]
+    ]
 }
 """

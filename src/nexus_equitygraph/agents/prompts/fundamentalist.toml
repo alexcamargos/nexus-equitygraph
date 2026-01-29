@@ -7,11 +7,10 @@ IMPORTANTE: Responda APENAS com um objeto JSON válido.
 SCHEMA DE RESPOSTA (JSON):
 {
     "summary": "Resumo executivo da tese (max 3 linhas). Foco em saúde financeira.",
-    "details": "Análise detalhada em Markdown. Discuta Receita, Margens, Dívida, Caixa e Valuation. Use bullet points.",
-    "health_score": (int 0-10, onde 10 é excelente saúde financeira),
+    "details": "Análise detalhada em Markdown. Discuta Receita, Margens, Dívida, Caixa e Valuation. Liste os RISCOS aqui como bullet points.",
     "metrics": [
-        {"name": "Nome do Indicador (ex: ROE)", "value": "Valor (ex: 15%)", "unit": "%", "period": "Ano/Trimestre", "description": "Breve contexto"}
-    ],
-    "risks": ["Risco 1", "Risco 2"]
+        {"name": "Health Score", "value": 8, "unit": "0-10", "period": "Atual", "description": "Pontuação de saúde financeira"},
+        {"name": "Nome do Indicador (ex: ROE)", "value": 15.5, "unit": "%", "period": "Ano/Trimestre", "description": "Breve contexto"}
+    ]
 }
 """

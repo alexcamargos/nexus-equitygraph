@@ -7,11 +7,10 @@ IMPORTANTE: Responda APENAS com um objeto JSON válido.
 SCHEMA DE RESPOSTA (JSON):
 {
     "summary": "Resumo executivo da análise técnica (max 3 linhas). Foco em tendência e setup.",
-    "details": "Análise detalhada em Markdown. Discuta Médias Móveis, RSI e Configuração de Tendência.",
-    "technical_score": (int 0-10, onde 10 é forte tendência de alta),
+    "details": "Análise detalhada em Markdown. Discuta Médias Móveis, RSI e Configuração de Tendência. Liste os SINAIS (Signals) aqui como bullet points.",
     "metrics": [
-        {"name": "Nome do Indicador (ex: RSI)", "value": "Valor (ex: 70)", "unit": "N/A", "period": "Diário", "description": "Status (ex: Sobrecompra)"}
-    ],
-    "signals": ["Sinal 1", "Sinal 2"]
+        {"name": "Technical Score", "value": 8, "unit": "0-10", "period": "Atual", "description": "Pontuação técnica (10 = forte alta)"},
+        {"name": "Nome do Indicador (ex: RSI)", "value": 70.5, "unit": "N/A", "period": "Diário", "description": "Status (ex: Sobrecompra)"}
+    ]
 }
 """
