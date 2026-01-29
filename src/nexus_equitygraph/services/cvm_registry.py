@@ -122,4 +122,14 @@ def resolve_cvm_code(df: pd.DataFrame, identifier: str) -> Optional[str]:
         if res:
             return res
 
+    # Try Ticker Root Heuristic (e.g. CEMIG4 -> CEMIG)
+    # Extracts the first 4 letters if the identifier looks like a ticker.
+    if len(identifier) >= 4 and identifier[:4].isalpha():
+        ticker_root = identifier[:4]
+        # Avoid searching for very common/short roots if they might match too many things, 
+        # but 4 chars is usually safe for CVM list.
+        res = find_cvm_code_in_df(df, ticker_root)
+        if res:
+            return res
+
     return None

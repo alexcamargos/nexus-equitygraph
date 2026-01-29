@@ -118,7 +118,11 @@ def calculate_valuation_indicators(ticker: str, current_price: float) -> str:
     else:
         results.append("AVISO: Número de ações não encontrado na base CVM.")
 
-    reference_date = mapper.data["DRE"]["DT_REFER"].max() if "DRE" in mapper.data else "N/A"
+    reference_date = "N/A"
+    if "DRE" in mapper.data:
+        dre = mapper.data["DRE"]
+        if not dre.empty and "DT_REFER" in dre.columns:
+            reference_date = dre["DT_REFER"].max()
     footer = build_metadata(["Mercado", "Composição Capital", "DRE", "Balanço", "DFC"], [reference_date])
 
     return "\n".join(results) + footer
@@ -284,6 +288,9 @@ def calculate_growth_indicators(ticker: str) -> str:
         return "Dados DRE insuficientes."
 
     dre = data["DRE"]
+    if dre.empty or "DT_REFER" not in dre.columns:
+        return "Dados DRE vazios ou inválidos."
+
     dates = pd.to_datetime(dre["DT_REFER"], errors="coerce")
     available_years = sorted(dates.dt.year.unique(), reverse=True)
 
@@ -353,6 +360,9 @@ def get_financial_evolution(ticker: str) -> str:
         return "Dados DRE não disponíveis para evolução."
 
     dre = mapper.data["DRE"]
+    if dre.empty or "DT_REFER" not in dre.columns:
+        return "Dados DRE não disponíveis ou vazios."
+
     dates = sorted(dre["DT_REFER"].unique())
 
     summary = [f"--- Evolução Trimestral (Acumulado Ano) - {ticker} ---"]
@@ -399,7 +409,7 @@ def get_auditor_info(ticker: str) -> str:
         # Filter valid rows
         has_tp = "TP_RELAT_AUD" in df.columns
         has_ds = "DS_OPINIAO" in df.columns
-        
+
         if has_tp and has_ds:
             mask_valid = df["TP_RELAT_AUD"].notna() | df["DS_OPINIAO"].notna()
         elif has_tp:
@@ -427,7 +437,11 @@ def get_auditor_info(ticker: str) -> str:
                 auditor_name = f"{registered_auditor} (Cadastro CVM)"
                 sources.append("CVM (Cadastral)")
 
-    reference_date = data["parecer"]["DT_REFER"].max() if "parecer" in data else "N/A"
+    reference_date = "N/A"
+    if "parecer" in data:
+        parecer = data["parecer"]
+        if not parecer.empty and "DT_REFER" in parecer.columns:
+            reference_date = parecer["DT_REFER"].max()
     footer = build_metadata(sources, [reference_date])
 
     return f"Auditor: {auditor_name}\nOpinião: {opinion}{footer}"
@@ -472,7 +486,11 @@ def calculate_wealth_distribution(ticker: str) -> str:
         format_percentage_currency("Acionistas (Lucro)", shareholders_profit, total_dist)
     )
 
-    reference_date = mapper.data["DVA"]["DT_REFER"].max() if "DVA" in mapper.data else "N/A"
+    reference_date = "N/A"
+    if "DVA" in mapper.data:
+        dva = mapper.data["DVA"]
+        if not dva.empty and "DT_REFER" in dva.columns:
+            reference_date = dva["DT_REFER"].max()
     footer = build_metadata(["DVA"], [reference_date])
 
     return "\n".join(formatted_distribution_output) + footer
