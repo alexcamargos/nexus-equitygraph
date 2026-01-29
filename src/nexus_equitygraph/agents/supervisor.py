@@ -1,9 +1,6 @@
 """Supervisor Agent for aggregating analyses and generating final report."""
 
-from datetime import datetime
-
 from langchain_core.messages import HumanMessage, SystemMessage
-from loguru import logger
 
 from nexus_equitygraph.core.prompt_manager import PromptManagerProtocol, get_prompt_manager
 from nexus_equitygraph.core.providers import create_llm_provider
@@ -61,7 +58,13 @@ class SupervisorAgent:
 
         response = self.llm.invoke(messages)
 
-        return cleanup_think_tags(response.content)
+        if isinstance(response, dict):
+            return cleanup_think_tags(response.get("content", ""))
+
+        # JSON Fallback
+        content = getattr(response, "content", "")
+
+        return cleanup_think_tags(str(content))
 
     def analyze(self) -> dict:
         """Orchestrates the report generation process.
